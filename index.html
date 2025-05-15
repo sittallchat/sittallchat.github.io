@@ -1,34 +1,103 @@
 <!DOCTYPE html>
-<html>
+<html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Archive.org Yükleyici</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Internet Archive Yükleyici</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        #upload-container { border: 2px dashed #ccc; padding: 20px; text-align: center; margin-top: 20px; }
+        button { background-color: #2ea44f; color: white; border: none; padding: 10px 20px; cursor: pointer; }
+        button:disabled { background-color: #ccc; }
+    </style>
 </head>
 <body>
-  <h1>Dosya Yükle</h1>
-  <input type="file" id="fileInput">
-  <button onclick="uploadFile()">Yüle</button>
+    <h1>Dosya Yükle</h1>
+    <div id="upload-container">
+        <input type="file" id="fileInput" accept="*/*">
+        <button id="uploadBtn" disabled>Archive.org'a Yükle</button>
+        <p id="status"></p>
+    </div>
 
-  <script>
-    async function uploadFile() {
-      const file = document.getElementById('fileInput').files[0];
-      if (!file) {
-        alert("Lüfen bir dosya seçin.");
-        return;
-      }
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const statusEl = document.getElementById('status');
 
-      const formData = new FormData();
-      formData.append("file", file);
+            // Dosya seçildiğinde butonu aktif et
+            fileInput.addEventListener('change', () => {
+                uploadBtn.disabled = !fileInput.files.length;
+            });
 
-      const res = await fetch("https://archive-api-zeta.vercel.app/api/upload", {
-        method: "POST",
-        body: formData
-      });
+            // Yükleme fonksiyonu
+            uploadBtn.addEventListener('click', async () => {
+                if (!fileInput.files.length) return;
 
-      const result = await res.text();
-      alert(result);
-    }
-  </script>
+                const file = fileInput.files[0];
+                const itemId = `user_upload_${Date.now()}`;
+                statusEl.textContent = "Dosya işleniyor...";
+                uploadBtn.disabled = true;
+
+                try {
+                    // 1. Dosyayı Base64'e çevir
+                    const fileData = await readFileAsBase64(file);
+                    
+                    // 2. GitHub API ile Actions'ı tetikle
+                    const response = await triggerGitHubAction(itemId, fileData, file.name);
+                    
+                    if (response.ok) {
+                        statusEl.innerHTML = `✅ Yükleme başlatıldı!<br>Takip ID: <code>${itemId}</code>`;
+                    } else {
+                        throw new Error(await response.text());
+                    }
+                } catch (error) {
+                    statusEl.textContent = `❌ Hata: ${error.message}`;
+                    console.error(error);
+                } finally {
+                    uploadBtn.disabled = false;
+                }
+            });
+
+            // Yardımcı fonksiyonlar
+            function readFileAsBase64(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result.split(',')[1]);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+
+            async function triggerGitHubAction(itemId, fileData, fileName) {
+                // !!! GÜVENLİK UYARISI !!!
+                // GitHub token'ınızı asla burada saklamayın!
+                // Gerçek uygulamada bir backend/proxy kullanın.
+                const GITHUB_TOKEN = "YOUR_GITHUB_TOKEN"; // ⚠️ Tehlikeli!
+                const REPO_OWNER = "kullaniciAdi";
+                const REPO_NAME = "repoAdi";
+
+                return fetch(
+                    `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/dispatches`,
+                    {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `token ${GITHUB_TOKEN}`,
+                            "Accept": "application/vnd.github.everest-preview+json",
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            event_type: "archive_upload",
+                            client_payload: {
+                                item_id: itemId,
+                                file_name: fileName,
+                                file_data: fileData
+                            }
+                        })
+                    }
+                );
+            }
+        });
+    </script>
 </body>
 </html>
