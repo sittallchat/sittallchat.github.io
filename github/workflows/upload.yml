@@ -1,6 +1,22 @@
-steps:
-  - name: Upload to Archive.org
-    run: |
-      ia upload "my_item_id" "dosya.txt" \
-        --access-key "${{ secrets.IA_ACCESS_KEY }}" \
-        --secret-key "${{ secrets.IA_SECRET_KEY }}"
+name: Auto-Upload to Archive.org
+on:
+  push:
+    branches: [ main ]  # main branch'ine push yapıldığında tetiklenir
+    paths: [ 'uploads/**' ]  # 'uploads/' klasöründeki dosyaları izler
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4  # Repoyu indir
+      
+      - name: Install InternetArchive Tools
+        run: pip install internetarchive  # Gerekli kütüphaneyi kur
+
+      - name: Upload Files
+        run: |
+          ia upload "${{ secrets.IA_ITEM_ID }}" "uploads/" \  # 'uploads/' klasöründeki tüm dosyaları yükle
+            --metadata "title=Automatic Backup" \
+            --metadata "collection=opensource" \
+            --access-key "${{ secrets.IA_ACCESS_KEY }}" \
+            --secret-key "${{ secrets.IA_SECRET_KEY }}"
