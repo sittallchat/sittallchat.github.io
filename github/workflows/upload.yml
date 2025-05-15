@@ -1,0 +1,6 @@
+steps:
+  - name: Upload to Archive.org
+    run: |
+      ia upload "my_item_id" "dosya.txt" \
+        --access-key "${{ secrets.IA_ACCESS_KEY }}" \
+        --secret-key "${{ secrets.IA_SECRET_KEY }}"
