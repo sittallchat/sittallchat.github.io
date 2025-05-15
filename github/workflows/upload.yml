@@ -1,22 +1,22 @@
-name: Auto-Upload to Archive.org
+# .github/workflows/upload_api.yml
+name: Upload API
 on:
-  push:
-    branches: [ main ]  # main branch'ine push yapıldığında tetiklenir
-    paths: [ 'uploads/**' ]  # 'uploads/' klasöründeki dosyaları izler
+  repository_dispatch:
+    types: [upload_request]
 
 jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4  # Repoyu indir
-      
-      - name: Install InternetArchive Tools
-        run: pip install internetarchive  # Gerekli kütüphaneyi kur
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Upload Files
+      - name: Install InternetArchive Tools
+        run: pip install internetarchive
+
+      - name: Upload File
         run: |
-          ia upload "${{ secrets.IA_ITEM_ID }}" "uploads/" \  # 'uploads/' klasöründeki tüm dosyaları yükle
-            --metadata "title=Automatic Backup" \
-            --metadata "collection=opensource" \
+          echo "${{ github.event.client_payload.file_data }}" > file.txt
+          ia upload "${{ github.event.client_payload.item_id }}" file.txt \
             --access-key "${{ secrets.IA_ACCESS_KEY }}" \
             --secret-key "${{ secrets.IA_SECRET_KEY }}"
