@@ -1,22 +1,20 @@
-# .github/workflows/upload_api.yml
-name: Upload API
+name: Archive.org Upload
 on:
   repository_dispatch:
-    types: [upload_request]
+    types: [trigger_upload]  # JavaScript'te göndereceğiniz event_type ile eşleşmeli
 
 jobs:
   upload:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install InternetArchive Tools
-        run: pip install internetarchive
-
-      - name: Upload File
+      - uses: actions/checkout@v4
+      - name: Upload to Archive.org
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN }}  # Token'i environment variable olarak kullan
         run: |
-          echo "${{ github.event.client_payload.file_data }}" > file.txt
-          ia upload "${{ github.event.client_payload.item_id }}" file.txt \
-            --access-key "${{ secrets.IA_ACCESS_KEY }}" \
-            --secret-key "${{ secrets.IA_SECRET_KEY }}"
+          # Örnek: GitHub API'sini kullanarak bir işlem yap
+          curl -X POST \
+            -H "Authorization: token $GH_TOKEN" \
+            -H "Accept: application/vnd.github.v3+json" \
+            https://api.github.com/repos/${{ github.repository }}/dispatches \
+            -d '{"event_type":"custom_event"}'
